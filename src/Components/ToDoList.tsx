@@ -1,73 +1,94 @@
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-
-interface IForm {
-  id: string;
-  password: string;
-  email: string;
-}
+import React, { useEffect } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { categoryState, categoryType, toDoSelector } from "../atom";
+import { CreateToDo } from "./CreateToDo";
 
 const ToDoList = () => {
-  const {
-    register,
-    watch,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<IForm>({
-    defaultValues: {
-      email: "@naver.com",
-    },
-  });
+  const toDos = useRecoilValue(toDoSelector);
+  const [category, setCategory] = useRecoilState(categoryState);
 
-  const onValid = (data: any) => {
-    console.log(data);
+  let localCustomCategory: any = [];
+
+  let exitFn = false;
+
+  const localCategoryData = localStorage.getItem("customCategory");
+  if (localCategoryData !== null) {
+    const parsedToCategoryData = JSON.parse(localCategoryData);
+    localCustomCategory = parsedToCategoryData;
+    parsedToCategoryData.map((data: any) => {
+      const options = document.querySelectorAll("option");
+      options.forEach((i) => {
+        if (i.value !== data) {
+          const select = document.querySelector("select");
+          const option = document.createElement("option");
+          option.innerHTML = data;
+          option.value = data;
+          select?.append(option);
+        }
+      });
+    });
+  }
+
+  const customCategory = () => {
+    exitFn = false;
+    const selectInput = document.getElementById(
+      "custom-select"
+    ) as HTMLInputElement;
+
+    const localCategoryData = localStorage.getItem("customCategory");
+    if (localCategoryData !== null) {
+      localCustomCategory = localCategoryData;
+      JSON.parse(localCategoryData).map((data: any) => {
+        if (data === selectInput.value) {
+          exitFn = true;
+          return;
+        }
+      });
+    }
+    if (exitFn) return;
+
+    const select = document.querySelector("select");
+    const option = document.createElement("option");
+    option.innerHTML = selectInput.value;
+    option.value = selectInput.value;
+    select?.append(option);
+
+    localStorage.setItem(
+      "customCategory",
+      JSON.stringify([...localCustomCategory, selectInput.value])
+    );
+
+    selectInput.value = "";
+  };
+
+  const onInput = (event: React.FormEvent<HTMLSelectElement>) => {
+    setCategory(event.currentTarget.value as any);
+  };
+
+  const onClick = (event: React.FormEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    customCategory();
   };
 
   return (
     <div>
-      <form
-        onSubmit={handleSubmit(onValid)}
-        style={{ display: "flex", flexDirection: "column" }}
-      >
-        <input
-          {...register("id", {
-            required: "id is required!",
-            minLength: {
-              value: 5,
-              message: "your password is short",
-            },
-          })}
-          placeholder="ID"
-        />
-        <span>{errors?.id?.message}</span>
-        <input
-          {...register("password", {
-            required: "password is required",
-            minLength: {
-              value: 5,
-              message: "your password is short",
-            },
-          })}
-          placeholder="Password"
-        />
-        <span>{errors?.password?.message}</span>
-        <input
-          {...register("email", {
-            required: "Email is required",
-            minLength: {
-              value: 5,
-              message: "your password is short",
-            },
-            pattern: {
-              value: /^[A-Za-z0-9._%+-]+@naver\.com$/,
-              message: "Only naver.com",
-            },
-          })}
-          placeholder="Email"
-        />
-        <span>{errors?.email?.message}</span>
-        <button>Add</button>
+      <h1>To Dos</h1>
+      <form>
+        <input id="custom-select" type="text" placeholder="custom type" />
+        <button onClick={onClick}>Add</button>
       </form>
+      <CreateToDo />
+      <hr />
+
+      <select value={category} onInput={onInput}>
+        <option value={categoryType.TO_DO}>ToDo</option>
+        <option value={categoryType.DOING}>Doing</option>
+        <option value={categoryType.DONE}>Done</option>
+      </select>
+      <hr />
+      {toDos.map((atoDo) => (
+        <li key={atoDo.id}>{atoDo.text}</li>
+      ))}
     </div>
   );
 };
